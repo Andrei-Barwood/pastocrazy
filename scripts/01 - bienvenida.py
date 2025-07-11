@@ -1,3 +1,5 @@
+
+
 def introduction_to_renewable_energy():
     """
     Esta función muestra al usuario un mensaje de introducción a la
