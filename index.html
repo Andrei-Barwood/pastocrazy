@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Web CLI</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Pyodide (Python in the browser) -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Tailwind gray-50 */
+        }
+        /* Custom scrollbar for the output area */
+        #output::-webkit-scrollbar {
+            width: 8px;
+        }
+        #output::-webkit-scrollbar-track {
+            background: #e2e8f0; /* Tailwind slate-200 */
+        }
+        #output::-webkit-scrollbar-thumb {
+            background-color: #94a3b8; /* Tailwind slate-400 */
+            border-radius: 10px;
+            border: 2px solid #e2e8f0; /* Tailwind slate-200 */
+        }
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <main class="w-full max-w-4xl bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+        <div id="loader-overlay" class="absolute inset-0 bg-white bg-opacity-80 flex flex-col items-center justify-center z-50">
+            <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mb-4"></div>
+            <p class="text-lg font-medium text-gray-700">Loading Python Environment...</p>
+            <p id="loader-message" class="text-sm text-gray-500 mt-2">This may take a moment.</p>
+        </div>
+
+        <header class="p-6 bg-gray-50 border-b border-gray-200">
+            <h1 class="text-3xl font-bold text-gray-800">Python Web CLI</h1>
+            <p class="mt-2 text-gray-600">Select a script from the dropdown and click 'Run' to see the output.</p>
+        </header>
+
+        <div class="p-6 space-y-6">
+            <!-- Controls Section -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
+                <div class="flex-grow">
+                    <label for="script-select" class="block text-sm font-medium text-gray-700 mb-1">Available Scripts</label>
+                    <select id="script-select" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <button id="run-button" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Run Script
+                </button>
+                 <button id="clear-button" class="w-full sm:w-auto bg-gray-500 text-white font-semibold px-6 py-3 rounded-lg shadow-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition">
+                    Clear Output
+                </button>
+            </div>
+
+            <!-- Input Section for Scripts that need it -->
+            <div id="input-area" class="hidden">
+                 <label for="user-input" class="block text-sm font-medium text-gray-700 mb-1">Script Input</label>
+                 <input type="text" id="user-input" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter value here...">
+            </div>
+
+            <!-- Output Section -->
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">Output</h2>
+                <pre id="output" class="w-full h-80 bg-gray-900 text-white text-sm p-4 rounded-lg overflow-y-auto font-mono whitespace-pre-wrap break-words"></pre>
+            </div>
+        </div>
+
+        <footer class="p-4 bg-gray-50 border-t border-gray-200 text-center text-sm text-gray-500">
+            <p>Powered by <a href="https://pyodide.org/" target="_blank" class="text-indigo-600 hover:underline">Pyodide</a> and <a href="https://tailwindcss.com/" target="_blank" class="text-indigo-600 hover:underline">Tailwind CSS</a>.</p>
+        </footer>
+    </main>
+
+    <script>
+        // --- CONFIGURATION ---
+        // Add your script filenames here. They must be in a 'scripts' folder.
+        const SCRIPT_FILES = [
+            "01 - bienvenida.py",
+            // Add other script names here, e.g., "02 - another script.py"
+        ];
+        
+        // --- DOM ELEMENTS ---
+        const scriptSelect = document.getElementById('script-select');
+        const runButton = document.getElementById('run-button');
+        const clearButton = document.getElementById('clear-button');
+        const outputDiv = document.getElementById('output');
+        const loaderOverlay = document.getElementById('loader-overlay');
+        const loaderMessage = document.getElementById('loader-message');
+        const inputArea = document.getElementById('input-area');
+        const userInput = document.getElementById('user-input');
+
+        let pyodide = null;
+
+        // --- PYODIDE INITIALIZATION ---
+        async function main() {
+            try {
+                // Initialize Pyodide
+                loaderMessage.textContent = 'Loading Pyodide core...';
+                pyodide = await loadPyodide();
+                loaderMessage.textContent = 'Python environment ready!';
+                
+                // Populate the script dropdown
+                SCRIPT_FILES.forEach(scriptName => {
+                    // Get the name without the .py extension for display
+                    const displayName = scriptName.replace(/\.py$/, '');
+                    const option = new Option(displayName, scriptName);
+                    scriptSelect.add(option);
+                });
+
+                // Hide loader and enable the run button
+                loaderOverlay.style.display = 'none';
+                runButton.disabled = false;
+
+            } catch (error) {
+                console.error("Pyodide initialization failed:", error);
+                loaderMessage.textContent = "Error loading Python environment. Check console.";
+                outputDiv.textContent = `Failed to load Pyodide. See browser console for details.`;
+            }
+        }
+
+        // --- SCRIPT EXECUTION LOGIC ---
+        async function runScript() {
+            if (!pyodide) {
+                outputDiv.textContent = "Pyodide is not loaded yet.";
+                return;
+            }
+
+            const scriptName = scriptSelect.value;
+            if (!scriptName) {
+                outputDiv.textContent = "Please select a script to run.";
+                return;
+            }
+
+            // Show a running state
+            runButton.disabled = true;
+            runButton.textContent = "Running...";
+            outputDiv.textContent = `Executing "${scriptName}"...\n\n`;
+            
+            try {
+                // Fetch the python script content from the 'scripts' folder
+                const scriptResponse = await fetch(`./scripts/${scriptName}`);
+                if (!scriptResponse.ok) {
+                    throw new Error(`Failed to fetch script: ${scriptResponse.statusText}`);
+                }
+                let scriptContent = await scriptResponse.text();
+
+                // --- Monkey-patching Python's built-in functions ---
+                // This is the key to making your CLI scripts work in the browser.
+                // We replace Python's input() and print() with JavaScript functions.
+                pyodide.globals.set('print', (s) => {
+                    outputDiv.textContent += s + '\\n';
+                    // Auto-scroll to the bottom
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                });
+
+                // The input function is more complex. We need to show the input box.
+                pyodide.globals.set('input', (prompt_text) => {
+                    // Display the prompt text to the user in the output
+                    outputDiv.textContent += prompt_text;
+                    
+                    // For this demo, we'll use the value from the text box.
+                    // A more advanced version could use a modal/popup.
+                    return userInput.value;
+                });
+                
+                // Check if the selected script needs user input to show the input field
+                // This is a simple check; you might need a more robust way to determine this.
+                if (scriptContent.includes('input(')) {
+                    inputArea.style.display = 'block';
+                } else {
+                    inputArea.style.display = 'none';
+                }
+
+                // Run the python code
+                await pyodide.runPythonAsync(scriptContent);
+
+            } catch (error) {
+                console.error("Error running script:", error);
+                outputDiv.textContent += `\n--- ERROR ---\n${error.message}`;
+            } finally {
+                // Restore the button state
+                runButton.disabled = false;
+                runButton.textContent = "Run Script";
+            }
+        }
+        
+        // --- EVENT LISTENERS ---
+        runButton.addEventListener('click', runScript);
+        clearButton.addEventListener('click', () => {
+             outputDiv.textContent = '';
+             userInput.value = '';
+             inputArea.style.display = 'none';
+        });
+
+        // Disable the run button until Pyodide is loaded
+        runButton.disabled = true;
+
+        // Start the application
+        main();
+
+    </script>
+</body>
+</html>
