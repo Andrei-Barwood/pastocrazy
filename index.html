@@ -86,10 +86,10 @@
 
     <script>
         // --- CONFIGURATION ---
-        // Add your script filenames here. They must be in a 'scripts' folder.
         const SCRIPT_FILES = [
             "01 - bienvenida.py",
-            // Add other script names here, e.g., "02 - another script.py"
+            "02.1 - unidades de medición.py",
+            "02.2 - unidades de medición.py"
         ];
         
         // --- DOM ELEMENTS ---
@@ -107,20 +107,16 @@
         // --- PYODIDE INITIALIZATION ---
         async function main() {
             try {
-                // Initialize Pyodide
                 loaderMessage.textContent = 'Loading Pyodide core...';
                 pyodide = await loadPyodide();
                 loaderMessage.textContent = 'Python environment ready!';
                 
-                // Populate the script dropdown
                 SCRIPT_FILES.forEach(scriptName => {
-                    // Get the name without the .py extension for display
                     const displayName = scriptName.replace(/\.py$/, '');
                     const option = new Option(displayName, scriptName);
                     scriptSelect.add(option);
                 });
 
-                // Hide loader and enable the run button
                 loaderOverlay.style.display = 'none';
                 runButton.disabled = false;
 
@@ -144,54 +140,46 @@
                 return;
             }
 
-            // Show a running state
             runButton.disabled = true;
             runButton.textContent = "Running...";
             outputDiv.textContent = `Executing "${scriptName}"...\n\n`;
             
             try {
-                // Fetch the python script content from the 'scripts' folder
                 const scriptResponse = await fetch(`./scripts/${scriptName}`);
                 if (!scriptResponse.ok) {
-                    throw new Error(`Failed to fetch script: ${scriptResponse.statusText}`);
+                    throw new Error(`Load failed. Could not find './scripts/${scriptName}'. Check that the file exists and the name is correct in the SCRIPT_FILES list.`);
                 }
                 let scriptContent = await scriptResponse.text();
 
                 // --- Monkey-patching Python's built-in functions ---
-                // This is the key to making your CLI scripts work in the browser.
-                // We replace Python's input() and print() with JavaScript functions.
+                
+                // ✨ FIX: This now uses a single backslash '\n' which is a true newline character.
+                // The <pre> tag will correctly render this as a line break.
                 pyodide.globals.set('print', (s) => {
-                    outputDiv.textContent += s + '\\n';
-                    // Auto-scroll to the bottom
+                    // Check if 's' is undefined or null, default to empty string
+                    const textToPrint = s === undefined || s === null ? '' : s;
+                    outputDiv.textContent += textToPrint.toString() + '\n';
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                 });
 
-                // The input function is more complex. We need to show the input box.
                 pyodide.globals.set('input', (prompt_text) => {
-                    // Display the prompt text to the user in the output
-                    outputDiv.textContent += prompt_text;
-                    
-                    // For this demo, we'll use the value from the text box.
-                    // A more advanced version could use a modal/popup.
+                    const textToPrint = prompt_text === undefined || prompt_text === null ? '' : prompt_text;
+                    outputDiv.textContent += textToPrint.toString();
                     return userInput.value;
                 });
                 
-                // Check if the selected script needs user input to show the input field
-                // This is a simple check; you might need a more robust way to determine this.
                 if (scriptContent.includes('input(')) {
                     inputArea.style.display = 'block';
                 } else {
                     inputArea.style.display = 'none';
                 }
 
-                // Run the python code
                 await pyodide.runPythonAsync(scriptContent);
 
             } catch (error) {
                 console.error("Error running script:", error);
                 outputDiv.textContent += `\n--- ERROR ---\n${error.message}`;
             } finally {
-                // Restore the button state
                 runButton.disabled = false;
                 runButton.textContent = "Run Script";
             }
@@ -205,10 +193,7 @@
              inputArea.style.display = 'none';
         });
 
-        // Disable the run button until Pyodide is loaded
         runButton.disabled = true;
-
-        // Start the application
         main();
 
     </script>
