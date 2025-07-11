@@ -1,69 +1,98 @@
 # -*- coding: utf-8 -*-
+import textwrap
 
-def explicar_conversion_temperatura():
+def justificar_texto(texto, ancho):
     """
-    Esta función explica en detalle la conversión de 68°F a los sistemas
-    MKS, CGS y SI, y luego imprime la explicación en la consola.
+    Toma un bloque de texto y lo devuelve con formato justificado
+    según el ancho de línea especificado.
     """
-    # 1. Definir la temperatura inicial en Fahrenheit
+    # Usamos textwrap para dividir el texto en líneas del ancho correcto
+    lineas_envueltas = textwrap.wrap(texto, ancho, break_long_words=False, replace_whitespace=False)
+    
+    # Si el texto original no tenía saltos de línea, lo tratamos como un solo bloque
+    if not lineas_envueltas:
+        return ""
+        
+    lineas_justificadas = []
+    # Iteramos sobre todas las líneas excepto la última del bloque
+    for i in range(len(lineas_envueltas) - 1):
+        linea = lineas_envueltas[i]
+        palabras = linea.split()
+
+        if len(palabras) <= 1:
+            lineas_justificadas.append(linea)
+            continue
+
+        espacios_a_anadir = ancho - len(''.join(palabras))
+        num_huecos = len(palabras) - 1
+        
+        if num_huecos == 0:
+             lineas_justificadas.append(linea)
+             continue
+
+        espacios_base = espacios_a_anadir // num_huecos
+        espacios_extra = espacios_a_anadir % num_huecos
+
+        linea_justificada = ""
+        for j, palabra in enumerate(palabras[:-1]):
+            linea_justificada += palabra
+            linea_justificada += ' ' * espacios_base
+            if j < espacios_extra:
+                linea_justificada += ' '
+        
+        linea_justificada += palabras[-1]
+        lineas_justificadas.append(linea_justificada)
+
+    # Añadimos la última línea sin justificar
+    lineas_justificadas.append(lineas_envueltas[-1])
+    return "\n".join(lineas_justificadas)
+
+
+def explicar_conversion_temperatura_justificada():
+    """
+    Versión mejorada del script que imprime la explicación con texto justificado.
+    """
     temp_f = 68.0
-
-    # 2. Convertir Fahrenheit a Celsius usando la fórmula C = (F - 32) * 5/9
     temp_c = (temp_f - 32) * 5/9
-
-    # 3. Convertir Celsius a Kelvin usando la fórmula K = C + 273.15
     temp_k = temp_c + 273.15
+    ancho_linea = 80 # Ancho de la consola en caracteres
 
-    # 4. Construir el texto explicativo usando f-strings para insertar los valores
-    explicacion = f"""
-    ¡Hola! Aquí tienes la explicación detallada sobre la temperatura ambiente de 68°F
-    y su equivalencia en los sistemas MKS, CGS y SI.
+    # --- Construcción de la explicación (ahora separada en bloques) ---
+    
+    titulo = "Explicación Detallada de Conversión de Temperatura"
+    
+    intro_texto = f"""¡Hola! Aquí tienes la explicación detallada sobre la temperatura ambiente de {temp_f}°F y su equivalencia en los sistemas MKS, CGS y SI."""
 
-    ---
-    ## ❓ La Pregunta Fundamental: Unidad de Temperatura
+    unidad_titulo = "1. La Unidad de Temperatura en Cada Sistema"
+    unidad_texto = """Primero, es clave saber qué unidad de temperatura utiliza cada sistema para ser precisos. El Sistema Internacional (SI), su precursor MKS (Metro-Kilogramo-Segundo) y el sistema CGS (Centímetro-Gramo-Segundo) utilizan el Kelvin (K) como su unidad fundamental para la temperatura termodinámica. Por lo tanto, el objetivo es convertir 68°F a Kelvin."""
 
-    Primero, es clave saber qué unidad de temperatura utiliza cada sistema para ser precisos.
+    proceso_titulo = "2. Proceso de Conversión Paso a Paso"
+    proceso_texto_1 = f"""La conversión se realiza en dos etapas. Primero, pasamos de Fahrenheit a Celsius con la fórmula C = (F - 32) * 5/9. Para {temp_f}°F, el cálculo es ({temp_f} - 32) * 5/9, lo que resulta en {temp_c:.2f}°C."""
+    proceso_texto_2 = f"""Luego, convertimos de Celsius a Kelvin con la fórmula K = C + 273.15. El cálculo es {temp_c:.2f}°C + 273.15, lo que nos da un resultado final de {temp_k:.2f} K."""
 
-    * **Sistema Internacional (SI):** Es el estándar global para la ciencia y la tecnología. Su unidad base para la temperatura es el **Kelvin (K)**.
-    * **Sistema MKS (Metro-Kilogramo-Segundo):** Este es el sistema precursor del SI y, como tal, también utiliza el **Kelvin (K)** como su unidad fundamental de temperatura.
-    * **Sistema CGS (Centímetro-Gramo-Segundo):** Aunque en la práctica a veces se usa el grado Celsius, la unidad fundamental para la temperatura termodinámica en el CGS es también el **Kelvin (K)**.
+    final_titulo = "3. Respuesta Final"
+    final_texto = f"""La temperatura ambiente de 68°F, expresada en las unidades fundamentales de los sistemas solicitados, es la misma para los tres: {temp_k:.2f} K."""
 
-    ✅ **Conclusión clave:** Los tres sistemas (MKS, CGS y SI) utilizan el **Kelvin (K)** como su unidad de temperatura fundamental. Por lo tanto, el objetivo es convertir 68°F a Kelvin.
+    # --- Impresión con formato ---
+    print("\n" + titulo.center(ancho_linea))
+    print("=" * ancho_linea)
+    print(justificar_texto(intro_texto, ancho_linea))
+    print("-" * ancho_linea)
+    
+    print(unidad_titulo)
+    print(justificar_texto(unidad_texto, ancho_linea))
+    print("-" * ancho_linea)
 
-    ---
-    ## ⚙️ Proceso de Conversión Paso a Paso
+    print(proceso_titulo)
+    print(justificar_texto(proceso_texto_1, ancho_linea))
+    print(justificar_texto(proceso_texto_2, ancho_linea))
+    print("-" * ancho_linea)
 
-    La conversión se realiza en dos etapas: primero a Celsius y luego a Kelvin.
+    print(final_titulo)
+    print(justificar_texto(final_texto, ancho_linea))
+    print("=" * ancho_linea)
 
-    **Paso 1: Convertir Fahrenheit (°F) a Celsius (°C)**
-    - **Fórmula:** $C = (F - 32) * {5}÷{9}$
-    - **Cálculo:**
-        - $C = ({temp_f}°F - 32) * {5}÷{9}$
-        - $C = {temp_f - 32} * {5}÷{9}$
-        - **$C = {temp_c:.2f}°C$**
-
-    **Paso 2: Convertir Celsius (°C) a Kelvin (K)**
-    - **Fórmula:** $K = C + 273.15$
-    - **Cálculo:**
-        - $K = {temp_c:.2f}°C + 273.15$
-        - **$K = {temp_k:.2f} K$**
-
-    ---
-    ## 🎯 Respuesta Final
-
-    La temperatura ambiente de 68°F, expresada en las unidades fundamentales de los sistemas solicitados, es:
-
-    * **Temperatura en el sistema MKS:** **{temp_k:.2f} K**
-    * **Temperatura en el sistema CGS:** **{temp_k:.2f} K**
-    * **Temperatura en el sistema SI:** **{temp_k:.2f} K**
-
-    En resumen, **68°F es igual a 293.15 Kelvin**.
-    """
-
-    # 5. Imprimir la explicación completa
-    print(explicacion)
 
 # --- Ejecución del Script ---
-# Esta línea asegura que la función se ejecute solo cuando corres este archivo directamente.
 if __name__ == "__main__":
-    explicar_conversion_temperatura()
+    explicar_conversion_temperatura_justificada()

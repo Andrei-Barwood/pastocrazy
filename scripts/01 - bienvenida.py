@@ -10,6 +10,7 @@ def introduction_to_renewable_energy():
 
     # Mensaje de bienvenida e introducción a las ERNC
     print("*" * 70)
+    print("Créditos de Diseño y Contenidos: Kirtan Teg Singh")
     print("⚡ ¡Bienvenido a la Introducción a la Energía del Futuro! ⚡")
     print("*" * 70)
     print("\n¿Sabías que la forma en que generamos electricidad está cambiando para mejor?")
